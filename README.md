@@ -1,2 +1,199 @@
-# 5g-core-resilience
-5G Core resilience testing and ML-based recovery time prediction using controlled failure injection and Random Forest regression.
+# 5G Core Resilience Testing and ML-Based Recovery Prediction
+
+## Project Overview
+
+This project evaluates the resilience of a containerized 5G Core network by injecting controlled process failures into the SMF (Session Management Function) and measuring how quickly the service recovers.
+
+The collected experimental data is then processed and used to train a Random Forest regression model for predicting recovery time. A live prediction script classifies the predicted recovery time into PASS, WARNING, or CRITICAL resilience levels.
+
+## Problem Statement
+
+5G Core network functions must remain available even when unexpected process failures occur. The objective of this project is to experimentally evaluate the recovery behavior of a 5G Core network and use machine learning to predict recovery time from observed system parameters.
+
+## Technology Stack
+
+- 5G Core: Open5GS
+- UE/RAN simulation: UERANSIM
+- Containerization: Docker
+- Operating environment: Linux / WSL2
+- Scripting: Bash
+- Programming: Python
+- Data processing: Pandas
+- Machine Learning: Scikit-learn
+- Visualization: Matplotlib
+- ML Algorithm: Random Forest Regression
+
+## Product Development
+
+The project was developed through a combination of network experimentation, failure injection, dataset generation, data preprocessing, machine-learning development, and result analysis.
+
+### Failure Injection
+
+Controlled failures were injected into the SMF container using Linux signals:
+
+| Failure Type | Signal | Exit Code |
+|---|---:|---:|
+| SIGINT | 2 | 130 |
+| SIGQUIT | 3 | 131 |
+| SIGKILL | 9 | 137 |
+| SIGTERM | 15 | 143 |
+
+The failure-injection scripts restart the affected network function according to the configured restart policy and collect recovery measurements.
+
+### Experimental Data Collection
+
+Each experiment records parameters including:
+
+- Failure type
+- Failure signal
+- Exit code
+- Restart count
+- Pre-failure status
+- Post-failure status
+- Recovery time
+- Connectivity status
+- Packet loss
+- Average RTT
+- Resilience status
+
+A total of 69 experiments were collected.
+
+### Dataset Processing
+
+The raw CSV dataset was converted into a machine-learning-ready dataset using categorical encoding.
+
+The final ML dataset contained 68 usable samples because one experiment had a missing recovery-time value.
+
+The processed dataset contains 19 features/columns, including encoded failure type, failure signal, exit code, restart count, packet loss, and RTT.
+
+### Machine Learning
+
+A Random Forest Regressor was trained to predict recovery time.
+
+The target variable was:
+
+`recovery_time_sec`
+
+The model was evaluated using:
+
+- Mean Absolute Error (MAE)
+- Root Mean Squared Error (RMSE)
+- R² Score
+- 5-fold cross-validation
+
+The final cross-validation result was:
+
+- Average MAE: 0.1552 seconds
+- Average R²: -1.8384
+
+The cross-validation result indicates that the current dataset is relatively small and the regression model has considerable variation between folds. Therefore, the ML component is treated as a proof-of-concept recovery-time predictor rather than a highly accurate production predictor.
+
+## Resilience Prediction
+
+The live predictor accepts:
+
+- Failure signal
+- Exit code
+- Restart count
+- Packet loss
+- Average RTT
+
+It predicts recovery time and classifies the result using the following thresholds:
+
+| Predicted Recovery Time | Decision |
+|---|---|
+| ≤ 0.2 s | PASS |
+| 0.2–0.6 s | WARNING |
+| > 0.6 s | CRITICAL |
+
+Example live prediction:
+
+- Failure signal: 15
+- Exit code: 143
+- Restart count: 23
+- Packet loss: 0%
+- Average RTT: 25 ms
+- Predicted recovery time: 0.531 s
+- Decision: WARNING
+
+## Experimental Results
+
+The final experimental dataset contains 69 experiments.
+
+| Failure Type | Samples | Average Recovery |
+|---|---:|---:|
+| NONE | 1 | 0.000 s |
+| SIGQUIT | 15 | 0.100 s |
+| SIGKILL | 15 | 0.451 s |
+| SIGTERM | 23 | 0.514 s |
+| SIGINT | 15 | 0.515 s |
+
+Overall experimental results:
+
+- Total experiments: 69
+- Average recovery time: 0.402 s
+- Average packet loss: 0.14%
+- Average RTT: 24.439 ms
+- Resilience pass rate: 100%
+
+The results show that the tested 5G Core configuration recovered successfully from all injected failure scenarios according to the defined resilience criteria.
+
+## Results and Graphs
+
+### Failure Recovery Comparison
+
+`results/failure_recovery_comparison.png`
+
+This graph compares the average recovery time for different injected failure types.
+
+### Actual vs Predicted Recovery Time
+
+`results/actual_vs_predicted.png`
+
+This graph shows the relationship between experimentally observed and machine-learning-predicted recovery values.
+
+### Actual vs ML Predicted Comparison
+
+`results/actual_vs_ml_comparison.png`
+
+This graph compares measured recovery times against predictions generated by the trained model for each failure type.
+
+### Feature Importance
+
+`results/feature_importance.png`
+
+This graph shows the relative contribution of input features used by the Random Forest model.
+
+## Project Structure
+
+```text
+5g-core-resilience/
+│
+├── README.md
+│
+├── dataset/
+│   ├── resilience_dataset.csv
+│   ├── resilience_ml_dataset.csv
+│   ├── collect_experiment.sh
+│   ├── collect_experiment_sigint.sh
+│   ├── collect_experiment_sigkill.sh
+│   ├── collect_experiment_sigquit.sh
+│   ├── collect_experiment_sigterm.sh
+│   ├── preprocess_dataset.py
+│   ├── train_recovery_model.py
+│   ├── evaluate_model.py
+│   ├── predict_recovery.py
+│   ├── resilience_predictor.py
+│   ├── failure_analysis.py
+│   ├── ml_results_summary.py
+│   └── model_comparison.py
+│
+├── models/
+│   ├── recovery_time_model.pkl
+│   └── recovery_time_model_cv.pkl
+│
+└── results/
+    ├── actual_vs_predicted.png
+    ├── actual_vs_ml_comparison.png
+    ├── failure_recovery_comparison.png
+    └── feature_importance.png
